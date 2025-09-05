@@ -30,12 +30,12 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
         for _, k := range allowedKeys {
             k = strings.TrimSpace(k)
             if k == "" { continue }
-            allowSet[toSnakeCase(k)] = struct{}{}
+            allowSet[k] = struct{}{}
         }
     }
 
     for _, s := range specs {
-        nk := toSnakeCase(strings.TrimSpace(s.Key))
+        nk := strings.TrimSpace(s.Key)
         if nk == "" { continue }
         if len(allowSet) > 0 {
             if _, ok := allowSet[nk]; !ok {

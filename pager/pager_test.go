@@ -144,6 +144,46 @@ func TestInferModelInfo(t *testing.T) {
 	}
 }
 
+// Ensure ORDER uses exact bun tag column names; no snake_case fallback.
+func TestOrderByExactBunTagRequired(t *testing.T) {
+    model := &TestModel{}
+    info, err := InferModelInfo(model)
+    if err != nil { t.Fatal(err) }
+
+    // Exact bun tag works
+    plan, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "created_at"}}, info, nil)
+    if err != nil { t.Fatal(err) }
+    if plan.Items[0].Column != "created_at" || plan.Items[0].Direction != "ASC" {
+        t.Fatalf("expected created_at ASC, got %+v", plan.Items[0])
+    }
+
+    // Non-exact key should error
+    if _, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "CreatedAt"}}, info, nil); err == nil {
+        t.Fatal("expected error for non-exact bun column key")
+    }
+
+    // PK has tag with options; should parse up to comma and work
+    plan2, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "id", Desc: true}}, info, nil)
+    if err != nil { t.Fatal(err) }
+    if plan2.Items[0].Column != "id" || plan2.Items[0].Direction != "DESC" {
+        t.Fatalf("expected id DESC, got %+v", plan2.Items[0])
+    }
+}
+
+// Model with a field that lacks bun tag; ordering by that name must error.
+type noTagModel struct {
+    ID    int64  `bun:"id,pk"`
+    NoTag string // no bun tag
+}
+
+func TestOrderByFieldWithoutBunTagErrors(t *testing.T) {
+    info, err := InferModelInfo(&noTagModel{})
+    if err != nil { t.Fatal(err) }
+    if _, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "no_tag"}}, info, nil); err == nil {
+        t.Fatal("expected error for field without bun tag")
+    }
+}
+
 func TestAllowedOrderKeysEnforced(t *testing.T) {
     model := &TestModel{}
     info, err := InferModelInfo(model)

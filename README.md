@@ -74,14 +74,14 @@ Generating code from proto is optional (the repo ships with hand-written types f
 - Output uses `paths=source_relative` honoring `option go_package` in proto.
 
 ## Options
-- AllowedOrderKeys: logical keys allowed in `order`. Empty → all model fields allowed.
+- AllowedOrderKeys: bun column names allowed in `order`. Empty → all model fields allowed.
 - DefaultOrderSpecs: used when no order is specified (e.g., []OrderSpec{{Key:"created_at", Desc:true}}). If empty, defaults to PK DESC.
 - DefaultLimit/MaxLimit: limit handling with clamping and non-positive defaulting.
 - UseMySQLTupleWhenAligned: reserved for future optimization; not implemented.
   
 Notes:
-- Disallowed order keys are skipped and logged at Warn level.
-- You may set `AllowedOrderKeys` to a normalized snake_case set (field names are normalized internally).
+- Order keys must exactly match bun column names (case/spacing included).
+- Disallowed or non-existent keys return an error.
 
 ## Ordering Rules
 - The same ordering plan applies to both offset and cursor.

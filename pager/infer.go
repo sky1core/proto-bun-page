@@ -7,10 +7,10 @@ import (
 )
 
 type ModelInfo struct {
-	TableName    string
-	PKColumns    []string
-	ColumnToKey  map[string]string
-	KeyToColumn  map[string]string
+    TableName    string
+    PKColumns    []string
+    ColumnToKey  map[string]string
+    KeyToColumn  map[string]string
 }
 
 func InferModelInfo(model interface{}) (*ModelInfo, error) {
@@ -24,30 +24,30 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
 		t = t.Elem()
 	}
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		bunTag := field.Tag.Get("bun")
-		if bunTag == "" {
-			continue
-		}
+    for i := 0; i < t.NumField(); i++ {
+        field := t.Field(i)
+        bunTag := field.Tag.Get("bun")
+        if bunTag == "" {
+            continue
+        }
 
-		parts := strings.Split(bunTag, ",")
-		columnName := parts[0]
-		
-		if columnName == "" {
-			columnName = toSnakeCase(field.Name)
-		}
+        parts := strings.Split(bunTag, ",")
+        columnName := parts[0]
+        if columnName == "" {
+            // No implicit snake_case fallback: column must be specified in bun tag
+            continue
+        }
 
-		key := toSnakeCase(field.Name)
-		info.ColumnToKey[columnName] = key
-		info.KeyToColumn[key] = columnName
+        // Logical key equals bun column name
+        info.ColumnToKey[columnName] = columnName
+        info.KeyToColumn[columnName] = columnName
 
-		for _, part := range parts {
-			if part == "pk" {
-				info.PKColumns = append(info.PKColumns, columnName)
-			}
-		}
-	}
+        for _, part := range parts {
+            if part == "pk" {
+                info.PKColumns = append(info.PKColumns, columnName)
+            }
+        }
+    }
 
     if len(info.PKColumns) == 0 {
         info.PKColumns = []string{"id"}
@@ -59,15 +59,4 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
     }
 
 	return info, nil
-}
-
-func toSnakeCase(s string) string {
-	var result []rune
-	for i, r := range s {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			result = append(result, '_')
-		}
-		result = append(result, r)
-	}
-	return strings.ToLower(string(result))
 }

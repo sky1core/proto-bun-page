@@ -251,18 +251,13 @@ func TestPagerIntegration(t *testing.T) {
         }
     })
 
-    t.Run("order normalization accepts +Name and trims", func(t *testing.T) {
+    t.Run("order requires exact bun column key", func(t *testing.T) {
         pg := New(&Options{DefaultLimit: 3, MaxLimit: 10, AllowedOrderKeys: []string{"name"}, LogLevel: "error"})
         var rows []TestModel
         in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "Name", Desc: false}}}
         q := db.NewSelect().Model(&TestModel{})
-        _, err := pg.ApplyAndScan(ctx, q, in, &rows)
-        if err != nil { t.Fatal(err) }
-        // Check ascending by name for first 3
-        for i := 1; i < len(rows); i++ {
-            if rows[i].Name < rows[i-1].Name {
-                t.Fatal("expected ascending by name with normalization")
-            }
+        if _, err := pg.ApplyAndScan(ctx, q, in, &rows); err == nil {
+            t.Fatal("expected error for non-exact order key 'Name'")
         }
     })
 }

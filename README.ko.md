@@ -44,7 +44,7 @@ if out.Cursor != "" {
 - `.pb.go`는 CI에서 생성하며 레포에 포함하지 않습니다
 
 ## 옵션
-- `AllowedOrderKeys`: 허용 정렬 키(공백이면 모델 필드 모두 허용)
+- `AllowedOrderKeys`: 정렬에 허용되는 bun 컬럼명 목록(공백이면 모델 필드 모두 허용)
 - `DefaultOrderSpecs`: 비어있을 때 사용할 기본 오더(예: `[]OrderSpec{{Key:"created_at", Desc:true}}`), 미설정이면 PK DESC
 - `DefaultLimit`/`MaxLimit`: 리밋 기본/상한(clamp)
 - `UseMySQLTupleWhenAligned`: 추후 최적화 예약(현재 미구현)
@@ -54,13 +54,12 @@ if out.Cursor != "" {
 - PK 방향은 마지막 사용자 지정 키를 따름; 사용자 오더가 없으면 PK DESC
 - 오더 뒤에 PK 자동 추가로 전순서 보장
 
-## 커서 의미
 - 커서 = 이전 응답 마지막 행의 “단일 PK” 값 (base64 URL-safe, opaque)
 - 서버: 커서(PK)로 앵커 조회 → (정렬키…, PK)로 OR-체인 WHERE 구성 → exclusive 경계
 
 ## 로깅
 - 리밋 기본값 대체/상한 클램프 시 Warn
-- 비허용 정렬 키 입력 시 Warn (스킵됨)
+- 비허용/모델 미존재 정렬 키 입력 시 에러
 
 ## 테스트
 - `go test ./...`

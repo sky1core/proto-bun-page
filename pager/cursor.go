@@ -80,19 +80,12 @@ func ExtractRowValues(row interface{}, orderPlan *OrderPlan, modelInfo *ModelInf
     for i := 0; i < t.NumField(); i++ {
         f := t.Field(i)
         tag := f.Tag.Get("bun")
+        if tag == "" { continue }
         col := tag
-        if col == "" {
-            snake := toSnakeCase(f.Name)
-            if mapped, ok := modelInfo.KeyToColumn[snake]; ok {
-                col = mapped
-            } else {
-                col = snake
-            }
-        } else {
-            if comma := indexOfComma(tag); comma >= 0 {
-                col = tag[:comma]
-            }
+        if comma := indexOfComma(tag); comma >= 0 {
+            col = tag[:comma]
         }
+        if col == "" { continue }
         colIndex[col] = i
     }
 
