@@ -68,29 +68,13 @@ func ExtractRowValues(row interface{}, orderPlan *OrderPlan, modelInfo *ModelInf
     values := make(map[string]interface{})
 
     v := reflect.ValueOf(row)
-    if v.Kind() == reflect.Ptr {
-        v = v.Elem()
-    }
+    if v.Kind() == reflect.Ptr { v = v.Elem() }
     if v.Kind() != reflect.Struct {
         return nil, fmt.Errorf("row must be a struct or pointer to struct")
     }
 
-    t := v.Type()
-    colIndex := make(map[string]int)
-    for i := 0; i < t.NumField(); i++ {
-        f := t.Field(i)
-        tag := f.Tag.Get("bun")
-        if tag == "" { continue }
-        col := tag
-        if comma := indexOfComma(tag); comma >= 0 {
-            col = tag[:comma]
-        }
-        if col == "" { continue }
-        colIndex[col] = i
-    }
-
     for _, item := range orderPlan.Items {
-        if idx, ok := colIndex[item.Column]; ok {
+        if idx, ok := modelInfo.FieldIndexByColumn[item.Column]; ok {
             values[item.Column] = v.Field(idx).Interface()
         }
     }

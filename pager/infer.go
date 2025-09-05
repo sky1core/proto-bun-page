@@ -4,6 +4,7 @@ import (
     "fmt"
     "reflect"
     "strings"
+    "sync"
 )
 
 type ModelInfo struct {
@@ -11,18 +12,25 @@ type ModelInfo struct {
     PKColumns    []string
     ColumnToKey  map[string]string
     KeyToColumn  map[string]string
+    // FieldIndexByColumn maps bun column name -> struct field index
+    FieldIndexByColumn map[string]int
 }
 
-func InferModelInfo(model interface{}) (*ModelInfo, error) {
-	info := &ModelInfo{
-		ColumnToKey: make(map[string]string),
-		KeyToColumn: make(map[string]string),
-	}
+var modelInfoCache sync.Map // map[reflect.Type]*ModelInfo
 
-	t := reflect.TypeOf(model)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
+func InferModelInfo(model interface{}) (*ModelInfo, error) {
+    t := reflect.TypeOf(model)
+    if t.Kind() == reflect.Ptr { t = t.Elem() }
+
+    if v, ok := modelInfoCache.Load(t); ok {
+        return v.(*ModelInfo), nil
+    }
+
+    info := &ModelInfo{
+        ColumnToKey:        make(map[string]string),
+        KeyToColumn:        make(map[string]string),
+        FieldIndexByColumn: make(map[string]int),
+    }
 
     for i := 0; i < t.NumField(); i++ {
         field := t.Field(i)
@@ -41,6 +49,7 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
         // Logical key equals bun column name
         info.ColumnToKey[columnName] = columnName
         info.KeyToColumn[columnName] = columnName
+        info.FieldIndexByColumn[columnName] = i
 
         for _, part := range parts {
             if part == "pk" {
@@ -57,6 +66,6 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
     if len(info.PKColumns) > 1 {
         return nil, fmt.Errorf("composite primary key is not supported")
     }
-
-	return info, nil
+    modelInfoCache.Store(t, info)
+    return info, nil
 }

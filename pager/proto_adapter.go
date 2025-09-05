@@ -146,21 +146,11 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
     if hasMore || (mode == "cursor" && rowCount > 0) {
         if mode == "cursor" && rowCount > 0 {
             lastRow := destValue.Index(rowCount - 1)
+            if lastRow.Kind() == reflect.Ptr { lastRow = lastRow.Elem() }
             values := make(map[string]interface{})
-            // Extract values for cursor
             for _, item := range orderPlan.Items {
-                field := lastRow
-                if field.Kind() == reflect.Ptr { field = field.Elem() }
-                fieldType := field.Type()
-                for i := 0; i < fieldType.NumField(); i++ {
-                    f := fieldType.Field(i)
-                    tag := f.Tag.Get("bun")
-                    columnName := tag
-                    if commaIdx := strings.Index(tag, ","); commaIdx >= 0 { columnName = tag[:commaIdx] }
-                    if columnName == item.Column {
-                        values[item.Column] = field.Field(i).Interface()
-                        break
-                    }
+                if idx, ok := modelInfo.FieldIndexByColumn[item.Column]; ok {
+                    values[item.Column] = lastRow.Field(idx).Interface()
                 }
             }
             if next, err := EncodeCursor(orderPlan, values, modelInfo); err == nil {
