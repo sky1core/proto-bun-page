@@ -1,0 +1,30 @@
+
+# viberules (local mode - entire directory ignored)
+.viberules/
+
+# viberules config file (always ignored)
+.viberules/.config.yaml
+
+# viberules local files (personal files only)
+*.local.md
+
+# viberules output files (symlinked)
+.amazonq/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+
+# Local development guides (not versioned)
+local/
+
+# Ignore removed dev docs path if recreated locally
+docs/pager/
+
+# Local/editor/os files
+.DS_Store
+.idea/
+.vscode/
+.claude/
+
+# Generated protobuf files
+**/*.pb.go

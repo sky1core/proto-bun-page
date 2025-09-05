@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package pager.v1;
+
+option go_package = "github.com/sky1core/proto-bun-page/proto/pager/v1;pagerpb";
+
+// Logical order specification. Key refers to an allowed logical key.
+message Order {
+  string key = 1;
+  bool desc = 2;
+}
+
+// Page request/response contract.
+// - limit: 0 or unset uses server default; values may be clamped to a server max.
+// - order: if empty, server default order is used; server always appends PK as a tiebreaker.
+// - selector: choose one of page (offset) or cursor (keyset). page is 1-based; cursor is last PK of previous page.
+message Page {
+  uint32 limit = 1;
+  repeated Order order = 2;
+  oneof selector {
+    uint32 page   = 10;  // 1-based (offset)
+    string cursor = 11;  // after this PK (exclusive); empty or unset means from the start
+  }
+}
+
+// Internal cursor payload (opaque to clients). Values are string-encoded
+// to avoid type-coupling; server interprets types for PKs as needed.
+// (no public cursor payload; cursor is an opaque string)
