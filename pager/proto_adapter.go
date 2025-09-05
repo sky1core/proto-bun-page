@@ -21,9 +21,6 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
     if in.Page > 0 && strings.TrimSpace(in.Cursor) != "" {
         return nil, NewInvalidRequestError("cannot specify both page and cursor")
     }
-    if in.Page > 0 && in.Page < 1 {
-        return nil, NewInvalidRequestError("page must be >= 1")
-    }
 
     // Infer model info from destination
     destType := reflect.TypeOf(dest)

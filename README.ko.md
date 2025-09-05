@@ -4,9 +4,9 @@ Bun 기반 오프셋/커서 페이지네이션 유틸리티. 단일 Protobuf `Pa
 
 ## 주요 기능
 - 단일 오더 경로: 오프셋/커서 공통 정렬 플랜
-- 커서 = 마지막 행의 단일 PK; 앵커 조회 + 배타(exclusive) 경계
-- 항상 PK를 타이브레이커로 자동 추가(빈 오더 시 PK DESC)
-- `AllowedOrderKeys` 화이트리스트, `DefaultOrder` 지원
+- 커서 = 마지막 행의 단일 PK(opaque); 앵커 조회 + 배타(exclusive) 경계
+- 항상 단일 PK를 타이브레이커로 자동 추가(빈 오더 시 PK DESC)
+- `AllowedOrderKeys` 화이트리스트, `DefaultOrderSpecs` 지원
 - 리밋 검증: 0/미지정 → 기본값, 상한 초과 → clamp (Warn)
 - Proto 어댑터: `pagerpb.Page` 요청/응답으로 바로 사용
 
@@ -43,7 +43,6 @@ if out.Cursor != "" {
 - `protoc` + `protoc-gen-go` 설치 후, 루트에서 `make proto` 실행
 - `.pb.go`는 CI에서 생성하며 레포에 포함하지 않습니다
 
-## 옵션
 - `AllowedOrderKeys`: 정렬에 허용되는 bun 컬럼명 목록(공백이면 모델 필드 모두 허용)
 - `DefaultOrderSpecs`: 비어있을 때 사용할 기본 오더(예: `[]OrderSpec{{Key:"created_at", Desc:true}}`), 미설정이면 PK DESC
 - `DefaultLimit`/`MaxLimit`: 리밋 기본/상한(clamp)

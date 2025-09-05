@@ -6,9 +6,9 @@ Bun-based offset/cursor pagination utility with a unified request/response contr
 
 ## Features
 - Offset and cursor pagination with a single ordering plan
-- Cursor = last page's primary key(s); anchor fetch + strict exclusive boundary
-- Always appends PK as tiebreaker; supports composite PK
-- AllowedOrderKeys filter and DefaultOrder support
+- Cursor = last page's single PK (opaque); anchor fetch + strict exclusive boundary
+- Always appends single PK as tiebreaker
+- AllowedOrderKeys filter and DefaultOrderSpecs support
 - Limit clamping and non-positive defaulting with warnings
 - Proto adapter: use `pagerpb.Page` request/response without requiring clients to know Bun
 
@@ -77,7 +77,6 @@ Generating code from proto is optional (the repo ships with hand-written types f
 - AllowedOrderKeys: bun column names allowed in `order`. Empty → all model fields allowed.
 - DefaultOrderSpecs: used when no order is specified (e.g., []OrderSpec{{Key:"created_at", Desc:true}}). If empty, defaults to PK DESC.
 - DefaultLimit/MaxLimit: limit handling with clamping and non-positive defaulting.
-- UseMySQLTupleWhenAligned: reserved for future optimization; not implemented.
   
 Notes:
 - Order keys must exactly match bun column names (case/spacing included).

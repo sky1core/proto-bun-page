@@ -6,7 +6,6 @@ type Options struct {
     LogLevel     string
     AllowedOrderKeys []string
     DefaultOrderSpecs []OrderSpec
-    UseMySQLTupleWhenAligned bool
 }
 
 func DefaultOptions() *Options {
