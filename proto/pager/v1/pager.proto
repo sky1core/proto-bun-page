@@ -13,7 +13,11 @@ message Order {
 // Page request/response contract.
 // - limit: 0 or unset uses server default; values may be clamped to a server max.
 // - order: if empty, server default order is used; server always appends PK as a tiebreaker.
-// - selector: choose one of page (offset) or cursor (keyset). page is 1-based; cursor is last PK of previous page.
+// - selector(oneof): choose exactly one of page (offset) or cursor (keyset).
+//   * page: 1-based (offset). If page is explicitly set, it MUST be >= 1.
+//           page=1 means offset=0; page>1 applies the standard offset.
+//   * cursor: opaque token (last PK). If cursor is explicitly set but empty (""), it means "from the start".
+//   * if neither page nor cursor is set, the server defaults to cursor mode from the start.
 message Page {
   uint32 limit = 1;
   repeated Order order = 2;

@@ -1,0 +1,35 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: benchdb
+      MYSQL_USER: bench
+      MYSQL_PASSWORD: benchpass
+    ports:
+      - "3306:3306"
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password", "--performance_schema=ON", "--innodb_buffer_pool_size=2G", "--log_bin=OFF"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-prootpass"]
+      interval: 5s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d:ro
+  bench:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.bench
+    working_dir: /app/bench/mysql/bench
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./out:/app/bench/mysql/out
+    environment:
+      DSN: bench:benchpass@tcp(mysql:3306)/benchdb?parseTime=true&multiStatements=true
+      COUNT: ${COUNT}
+      BENCHTIME: ${BENCHTIME}
+      LABEL: ${LABEL}
+    command: ["/bench_entrypoint.sh"]
+

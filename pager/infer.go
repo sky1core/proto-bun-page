@@ -1,7 +1,6 @@
 package pager
 
 import (
-    "fmt"
     "reflect"
     "strings"
     "sync"
@@ -64,7 +63,7 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
         info.KeyToColumn["id"] = "id"
     }
     if len(info.PKColumns) > 1 {
-        return nil, fmt.Errorf("composite primary key is not supported")
+        return nil, NewInvalidRequestError("composite primary key is not supported")
     }
     modelInfoCache.Store(t, info)
     return info, nil

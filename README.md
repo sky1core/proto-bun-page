@@ -2,6 +2,9 @@
 
 [한국어 문서 보기](README.ko.md)
 
+Requirements
+- Go 1.21+ (uses `log/slog`)
+
 Bun-based offset/cursor pagination utility with a unified request/response contract and a proto adapter. Focuses on DB-agnostic correctness (OR-chain WHERE) with optional knobs.
 
 ## Features
@@ -45,6 +48,12 @@ if out.Cursor != "" {
 - Schema: `proto/pager/v1/pager.proto`
  - Code generation required: generate `.pb.go` from `proto/pager/v1/pager.proto`.
 
+Semantics (selector)
+- Choose exactly one of `page` or `cursor`.
+- `page` is 1-based: if explicitly set, it must be >= 1 (1 → offset=0).
+- `cursor` is opaque; if explicitly set to empty string, it means "from the start".
+- If neither is set, defaults to cursor mode from the start.
+
 ```go
 in := &pagerpb.Page{
     Limit: 20,
@@ -87,14 +96,31 @@ Notes:
 - PK direction follows the last effective key; if none, PK DESC.
 - Composite PK: all PK columns appended as tiebreakers and included in the cursor.
   - When no user order is provided, all PK columns are appended with DESC.
+ - OrderSpec sanitization: keys are trimmed and duplicate keys are de-duplicated (last occurrence wins); PK tiebreaker is always appended.
 
 ## Cursor Semantics
 - Cursor is the last row's PK tuple from the previous page.
 - Server fetches anchor row by PK, derives `(keys..., pk)` values, and builds a DB-agnostic OR-chain WHERE with exclusive boundary.
 
 ## Logging
+- Backend: Go `log/slog` (TextHandler, stderr). `Options.LogLevel` controls minimum level.
 - Warn when limit is clamped or non-positive is replaced by default.
-- Warn when disallowed order keys are provided (they are skipped).
+- Error when disallowed or unknown order keys are provided.
+
+Injecting a custom logger
+```go
+// Provide your own slog.Logger
+lp := pager.New(nil)
+lp.SetLogger(pager.NewSlogLoggerAdapter(slog.NewJSONHandler(os.Stdout, nil)))
+```
+
+Errors
+
+| Code            | Meaning                                                                 |
+|-----------------|-------------------------------------------------------------------------|
+| INVALID_REQUEST | Bad inputs (both page+cursor, page<1, invalid cursor, bad order key, invalid destination, composite PK, etc.) |
+| STALE_CURSOR    | Anchor row not found (e.g., deleted) — cursor no longer valid           |
+| INTERNAL_ERROR  | Query execution failure or unexpected internal error                    |
 
 ## Testing
 - Run: `go test ./...`

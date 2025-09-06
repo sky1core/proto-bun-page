@@ -3,6 +3,7 @@ package pager
 import (
     "encoding/base64"
     "fmt"
+    "math"
     "reflect"
     "strconv"
 )
@@ -45,7 +46,7 @@ func DecodeCursor(cursor string, modelInfo *ModelInfo) (*CursorData, error) {
 
     decoded, err := base64.URLEncoding.DecodeString(cursor)
     if err != nil {
-        return nil, fmt.Errorf("invalid cursor format: %w", err)
+        return nil, NewInvalidRequestError("invalid cursor format")
     }
     s := string(decoded)
     cd := &CursorData{Values: map[string]interface{}{}, Mode: "cursor"}
@@ -81,11 +82,58 @@ func ExtractRowValues(row interface{}, orderPlan *OrderPlan, modelInfo *ModelInf
     return values, nil
 }
 
-func indexOfComma(s string) int {
-    for i := 0; i < len(s); i++ {
-        if s[i] == ',' {
-            return i
+// coerceToKind converts v into a value assignable for the given reflect.Kind when reasonable.
+// For unsupported combinations, returns the original v.
+func coerceToKind(v interface{}, k reflect.Kind) interface{} {
+    switch k {
+    case reflect.Int, reflect.Int32, reflect.Int64:
+        switch nv := v.(type) {
+        case int64:
+            return nv
+        case int:
+            return int64(nv)
+        case int32:
+            return int64(nv)
+        case uint32:
+            return int64(nv)
+        case uint64:
+            if nv > uint64(math.MaxInt64) { return v }
+            return int64(nv)
+        case float64:
+            return int64(nv)
+        case string:
+            if iv, err := strconv.ParseInt(nv, 10, 64); err == nil { return iv }
+            return v
+        }
+    case reflect.Uint, reflect.Uint32, reflect.Uint64:
+        switch nv := v.(type) {
+        case int64:
+            if nv < 0 { return v }
+            return uint64(nv)
+        case int:
+            if nv < 0 { return v }
+            return uint64(nv)
+        case int32:
+            if nv < 0 { return v }
+            return uint64(nv)
+        case uint32:
+            return uint64(nv)
+        case uint64:
+            return nv
+        case float64:
+            if nv < 0 { return v }
+            return uint64(nv)
+        case string:
+            if uv, err := strconv.ParseUint(nv, 10, 64); err == nil { return uv }
+            return v
+        }
+    case reflect.String:
+        switch nv := v.(type) {
+        case string:
+            return nv
+        default:
+            return fmt.Sprint(nv)
         }
     }
-    return -1
+    return v
 }

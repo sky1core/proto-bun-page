@@ -1,8 +1,9 @@
 package pager
 
 import (
-	"log"
-	"time"
+    "log/slog"
+    "os"
+    "time"
 )
 
 type Logger interface {
@@ -13,34 +14,45 @@ type Logger interface {
 }
 
 type defaultLogger struct {
-	level string
+    l *slog.Logger
 }
 
 func newDefaultLogger(level string) Logger {
-	return &defaultLogger{level: level}
+    var lv slog.Level
+    switch level {
+    case "debug":
+        lv = slog.LevelDebug
+    case "info":
+        lv = slog.LevelInfo
+    case "error":
+        lv = slog.LevelError
+    case "warn":
+        fallthrough
+    default:
+        lv = slog.LevelWarn
+    }
+    h := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lv})
+    return &defaultLogger{l: slog.New(h)}
 }
 
 func (l *defaultLogger) Debug(msg string, args ...interface{}) {
-	if l.level == "debug" {
-		log.Printf("[DEBUG] "+msg, args...)
-	}
+    l.l.Debug(msg, args...)
 }
 
 func (l *defaultLogger) Info(msg string, args ...interface{}) {
-	if l.level == "debug" || l.level == "info" {
-		log.Printf("[INFO] "+msg, args...)
-	}
+    l.l.Info(msg, args...)
 }
 
 func (l *defaultLogger) Warn(msg string, args ...interface{}) {
-	if l.level != "error" {
-		log.Printf("[WARN] "+msg, args...)
-	}
+    l.l.Warn(msg, args...)
 }
 
 func (l *defaultLogger) Error(msg string, args ...interface{}) {
-	log.Printf("[ERROR] "+msg, args...)
+    l.l.Error(msg, args...)
 }
+
+// NewSlogLoggerAdapter wraps a slog.Logger to satisfy this package's Logger interface.
+func NewSlogLoggerAdapter(l *slog.Logger) Logger { return &defaultLogger{l: l} }
 
 func logQuery(logger Logger, mode string, limit int, order string, rowCount int, elapsed time.Duration) {
 	logger.Info("pager query executed",
