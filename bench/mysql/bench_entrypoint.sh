@@ -9,6 +9,8 @@ mkdir -p "$OUT_DIR"
 
 cd /app/bench/mysql/bench
 echo "[bench] DSN=$DSN"
+
+# Using main module, no separate go.mod needed
 COUNT_DEFAULT=10
 BENCHTIME_DEFAULT=3s
 COUNT="${COUNT:-$COUNT_DEFAULT}"

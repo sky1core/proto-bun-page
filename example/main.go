@@ -57,7 +57,7 @@ func main() {
         MaxLimit:     10,
         LogLevel:     "info",
         AllowedOrderKeys:  []string{"created_at", "price", "name", "id"},
-        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Desc: true}},
+        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Asc: false}},
     })
 
     fmt.Println("=== Proto Adapter Example ===")
@@ -67,8 +67,8 @@ func main() {
 func demonstrateProtoAdapter(ctx context.Context, db *bun.DB, pg *pager.Pager) {
     in := &pagerpb.Page{
         Limit: 2,
-        Order: []*pagerpb.Order{{Key: "created_at", Desc: true}},
-        Cursor: "",
+        Order: []*pagerpb.Order{{Key: "created_at", Asc: false}},
+        Selector: &pagerpb.Page_Cursor{Cursor: ""},
     }
     var products []Product
     q := db.NewSelect().Model(&Product{})
@@ -80,8 +80,12 @@ func demonstrateProtoAdapter(ctx context.Context, db *bun.DB, pg *pager.Pager) {
     for _, p := range products {
         fmt.Printf("  - %s (created: %s)\n", p.Name, p.CreatedAt.Format("15:04:05"))
     }
-    if out.Cursor != "" {
-        in2 := &pagerpb.Page{Limit: 2, Order: in.Order, Cursor: out.Cursor}
+    if cursor, ok := out.Selector.(*pagerpb.Page_Cursor); ok && cursor.Cursor != "" {
+        in2 := &pagerpb.Page{
+            Limit: 2, 
+            Order: in.Order, 
+            Selector: &pagerpb.Page_Cursor{Cursor: cursor.Cursor},
+        }
         var next []Product
         q2 := db.NewSelect().Model(&Product{})
         out2, err := pg.ApplyAndScan(ctx, q2, in2, &next)

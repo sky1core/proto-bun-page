@@ -42,7 +42,7 @@ func newPager() *pager.Pager {
         MaxLimit:          100,
         LogLevel:          "error",
         AllowedOrderKeys:  []string{"created_at", "name", "score", "id"},
-        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Desc: true}},
+        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Asc: false}},
     })
 }
 
@@ -51,7 +51,7 @@ func benchCursorCreatedAtDesc(b *testing.B, limit int) {
     defer db.Close()
     p := newPager()
     ctx := context.Background()
-    in := &pagerpb.Page{Limit: uint32(limit), Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+    in := &pagerpb.Page{Limit: uint32(limit), Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         var rows []Item
@@ -68,7 +68,7 @@ func BenchmarkCursor_CreatedAtDesc_L100(b *testing.B) { benchCursorCreatedAtDesc
 func BenchmarkCursor_ScoreDesc_NameAsc(b *testing.B) {
     db := openDB(b); defer db.Close()
     p := newPager(); ctx := context.Background()
-    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "score", Desc: true}, {Key: "name", Desc: false}}}
+    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "score", Asc: false}, {Key: "name", Asc: true}}}
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         var rows []Item
@@ -82,7 +82,7 @@ func BenchmarkCursor_ScoreDesc_NameAsc(b *testing.B) {
 func BenchmarkCursor_Filter_Status_CreatedAt(b *testing.B) {
     db := openDB(b); defer db.Close()
     p := newPager(); ctx := context.Background()
-    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         var rows []Item
@@ -96,7 +96,11 @@ func BenchmarkCursor_Filter_Status_CreatedAt(b *testing.B) {
 func BenchmarkOffset_CreatedAtDesc_Page1000_L20(b *testing.B) {
     db := openDB(b); defer db.Close()
     p := newPager(); ctx := context.Background()
-    in := &pagerpb.Page{Limit: 20, Page: 1000, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+    in := &pagerpb.Page{
+        Limit: 20,
+        Selector: &pagerpb.Page_Page{Page: 1000},
+        Order: []*pagerpb.Order{{Key: "created_at", Asc: false}},
+    }
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         var rows []Item
@@ -110,7 +114,7 @@ func BenchmarkOffset_CreatedAtDesc_Page1000_L20(b *testing.B) {
 func BenchmarkCursor_Covering(b *testing.B) {
     db := openDB(b); defer db.Close()
     p := newPager(); ctx := context.Background()
-    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         var rows []Item
@@ -124,7 +128,7 @@ func BenchmarkCursor_Covering(b *testing.B) {
 func BenchmarkCursor_NonCovering(b *testing.B) {
     db := openDB(b); defer db.Close()
     p := newPager(); ctx := context.Background()
-    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+    in := &pagerpb.Page{Limit: 20, Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
     b.ResetTimer()
     for i := 0; i < b.N; i++ {
         var rows []Item
