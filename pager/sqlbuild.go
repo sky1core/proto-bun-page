@@ -34,6 +34,7 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
         }
     }
 
+    // track to dedupe by column while preserving last occurrence order
     for _, s := range specs {
         nk := strings.TrimSpace(s.Key)
         if nk == "" { continue }
@@ -48,6 +49,14 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
         }
         dir := "ASC"
         if s.Desc { dir = "DESC" }
+        // remove previous occurrence of this column, if any
+        if len(plan.Items) > 0 {
+            out := plan.Items[:0]
+            for _, it := range plan.Items {
+                if it.Column != column { out = append(out, it) }
+            }
+            plan.Items = out
+        }
         plan.Items = append(plan.Items, OrderItem{Column: column, Direction: dir})
     }
 

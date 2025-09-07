@@ -1,0 +1,18 @@
+FROM golang:1.24
+
+WORKDIR /app
+COPY . /app
+
+# Download dependencies and prepare Go tools
+RUN go env -w GOCACHE=/root/.cache/go-build \
+ && go env -w GOMODCACHE=/root/go/pkg/mod \
+ && go mod download \
+ && go install golang.org/x/perf/cmd/benchstat@latest
+
+# Bench entrypoint (tracked under bench/mysql)
+COPY bench/mysql/bench_entrypoint.sh /bench_entrypoint.sh
+RUN chmod +x /bench_entrypoint.sh
+
+ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"
+
+CMD ["/bench_entrypoint.sh"]

@@ -13,9 +13,13 @@
 CLAUDE.md
 GEMINI.md
 AGENTS.md
+local/benchmarks/out/
 
 # Local development guides (not versioned)
 local/
+
+# Benchmark outputs (tracked infra lives under bench/, outputs ignored)
+bench/mysql/out/
 
 # Ignore removed dev docs path if recreated locally
 docs/pager/
