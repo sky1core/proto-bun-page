@@ -21,13 +21,17 @@ func TestSelectorSemantics(t *testing.T) {
         out, err := p.ApplyAndScan(ctx, db.NewSelect().Model(&TestModel{}), in, &rows)
         if err != nil { t.Fatal(err) }
         if len(rows) != 2 { t.Fatalf("expected 2 rows, got %d", len(rows)) }
-        if out.Cursor == "" { t.Fatal("expected next cursor when defaulting to cursor mode") }
+        if cursor, ok := out.Selector.(*pagerpb.Page_Cursor); !ok || cursor.Cursor == "" {
+            t.Fatal("expected next cursor when defaulting to cursor mode")
+        }
     }
 
     // 2) Page explicitly set to 0 -> invalid
     {
-        in := &pagerpb.Page{Limit: 2, Page: 0}
-        in.PageSet = true
+        in := &pagerpb.Page{
+            Limit: 2,
+            Selector: &pagerpb.Page_Page{Page: 0},
+        }
         var rows []TestModel
         if _, err := p.ApplyAndScan(ctx, db.NewSelect().Model(&TestModel{}), in, &rows); err == nil {
             t.Fatal("expected error for page < 1 when page explicitly set")
@@ -36,35 +40,34 @@ func TestSelectorSemantics(t *testing.T) {
 
     // 3) Page explicitly set to 1 -> offset mode, no cursor in response
     {
-        in := &pagerpb.Page{Limit: 2, Page: 1}
-        in.PageSet = true
+        in := &pagerpb.Page{
+            Limit: 2,
+            Selector: &pagerpb.Page_Page{Page: 1},
+        }
         var rows []TestModel
         out, err := p.ApplyAndScan(ctx, db.NewSelect().Model(&TestModel{}), in, &rows)
         if err != nil { t.Fatal(err) }
         if len(rows) != 2 { t.Fatalf("expected 2 rows, got %d", len(rows)) }
-        if out.Cursor != "" { t.Fatal("did not expect cursor in offset mode") }
-        if out.Page != 1 { t.Fatal("expected echo page=1") }
+        if page, ok := out.Selector.(*pagerpb.Page_Page); !ok || page.Page != 1 {
+            t.Fatal("expected page=1 in offset mode")
+        }
     }
 
     // 4) Cursor explicitly set to empty -> cursor mode from start
     {
-        in := &pagerpb.Page{Limit: 2, Cursor: ""}
-        in.CursorSet = true
+        in := &pagerpb.Page{
+            Limit: 2,
+            Selector: &pagerpb.Page_Cursor{Cursor: ""},
+        }
         var rows []TestModel
         out, err := p.ApplyAndScan(ctx, db.NewSelect().Model(&TestModel{}), in, &rows)
         if err != nil { t.Fatal(err) }
         if len(rows) != 2 { t.Fatalf("expected 2 rows, got %d", len(rows)) }
-        if out.Cursor == "" { t.Fatal("expected next cursor in cursor mode (explicit empty)") }
-    }
-
-    // 5) Both specified -> error
-    {
-        in := &pagerpb.Page{Limit: 2, Page: 1, Cursor: "token"}
-        in.PageSet, in.CursorSet = true, true
-        var rows []TestModel
-        if _, err := p.ApplyAndScan(ctx, db.NewSelect().Model(&TestModel{}), in, &rows); err == nil {
-            t.Fatal("expected error when both page and cursor specified")
+        if cursor, ok := out.Selector.(*pagerpb.Page_Cursor); !ok || cursor.Cursor == "" {
+            t.Fatal("expected next cursor in cursor mode (explicit empty)")
         }
     }
+
+    // 5) oneof prevents both from being set simultaneously (this test is not needed with proper oneof)
 }
 

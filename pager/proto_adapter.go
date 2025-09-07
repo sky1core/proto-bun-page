@@ -146,10 +146,11 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
         rowCount = limit
     }
 
-    out := &pagerpb.Page{Limit: uint32(limit), Order: in.Order, Page: pageVal, Cursor: ""}
-
-    if hasMore || (mode == "cursor" && rowCount > 0) {
-        if mode == "cursor" && rowCount > 0 {
+    out := &pagerpb.Page{Limit: uint32(limit), Order: in.Order}
+    
+    if mode == "cursor" {
+        if rowCount > 0 && hasMore {
+            // Generate next cursor
             lastRow := destValue.Index(rowCount - 1)
             if lastRow.Kind() == reflect.Ptr { lastRow = lastRow.Elem() }
             values := make(map[string]interface{})
@@ -159,28 +160,33 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
                 }
             }
             if next, err := EncodeCursor(orderPlan, values, modelInfo); err == nil {
-                out.Cursor = next
+                out.Selector = &pagerpb.Page_Cursor{Cursor: next}
             }
+        } else {
+            // No next cursor
+            out.Selector = &pagerpb.Page_Cursor{Cursor: ""}
         }
+    } else {
+        // Page mode - echo back the page number
+        out.Selector = &pagerpb.Page_Page{Page: pageVal}
     }
 
     return out, nil
 }
 
 // detectPresence determines whether page/cursor selectors were explicitly provided.
-// It supports the shim presence helpers (types.go) and falls back to value checks.
 func detectPresence(in *pagerpb.Page) (hasCursor, hasPage bool) {
-    // When using our shim types (proto/pager/v1/types.go), Has* methods exist
-    type hasPresence interface{ HasPage() bool; HasCursor() bool }
     if in == nil { return false, false }
-    if hp, ok := interface{}(in).(hasPresence); ok {
-        return hp.HasCursor(), hp.HasPage()
+    
+    // Check oneof selector field
+    switch in.Selector.(type) {
+    case *pagerpb.Page_Page:
+        return false, true
+    case *pagerpb.Page_Cursor:
+        return true, false
+    default:
+        return false, false
     }
-    // Fallback on values/getters if presence cannot be detected
-    if g, ok := interface{}(in).(interface{ GetPage() uint32; GetCursor() string }); ok {
-        return strings.TrimSpace(g.GetCursor()) != "", g.GetPage() > 0
-    }
-    return strings.TrimSpace(in.Cursor) != "", in.Page > 0
 }
 
 // normalizeLimit resolves the effective limit and whether it was clamped by MaxLimit.
@@ -196,12 +202,16 @@ func normalizeLimit(req uint32, opts *Options) (limit int, clamped bool) {
     return limit, false
 }
 
-// getPageAndCursor extracts values via generated getters when available,
-// otherwise falls back to direct field access.
+// getPageAndCursor extracts values from oneof selector.
 func getPageAndCursor(in *pagerpb.Page) (page uint32, cursor string) {
     if in == nil { return 0, "" }
-    if g, ok := interface{}(in).(interface{ GetPage() uint32; GetCursor() string }); ok {
-        return g.GetPage(), g.GetCursor()
+    
+    switch s := in.Selector.(type) {
+    case *pagerpb.Page_Page:
+        return s.Page, ""
+    case *pagerpb.Page_Cursor:
+        return 0, s.Cursor
+    default:
+        return 0, ""
     }
-    return in.Page, in.Cursor
 }
