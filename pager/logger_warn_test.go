@@ -24,7 +24,7 @@ func TestErrorOnDisallowedOrderKeys(t *testing.T) {
     pg.logger = lg
 
     ctx := context.Background()
-    in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "score", Desc: true}, {Key: "created_at", Desc: false}}}
+    in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "score", Asc: false}, {Key: "created_at", Asc: true}}}
     var rows []TestModel
     _, err := pg.ApplyAndScan(ctx, db.NewSelect().Model(&TestModel{}), in, &rows)
     if err == nil { t.Fatal("expected error for disallowed order key") }

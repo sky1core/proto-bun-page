@@ -17,8 +17,8 @@ type OrderPlan struct {
 }
 
 type OrderSpec struct {
-    Key  string
-    Desc bool
+    Key string
+    Asc bool  // true = ASC, false = DESC (default)
 }
 
 // BuildOrderPlanFromSpecs builds an OrderPlan from structured specs (preferred path).
@@ -47,8 +47,8 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
         if !exists {
             return nil, NewInvalidRequestError("unsupported order key: " + nk)
         }
-        dir := "ASC"
-        if s.Desc { dir = "DESC" }
+        dir := "DESC"  // Default to DESC
+        if s.Asc { dir = "ASC" }   // explicitly true -> ASC
         // remove previous occurrence of this column, if any
         if len(plan.Items) > 0 {
             out := plan.Items[:0]

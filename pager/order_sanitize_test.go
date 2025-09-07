@@ -9,7 +9,7 @@ func TestBuildOrderPlan_SanitizeAndDedupe(t *testing.T) {
     if err != nil { t.Fatal(err) }
 
     // Duplicate key with different directions; last wins
-    specs := []OrderSpec{{Key: "name"}, {Key: " score ", Desc: true}, {Key: "name", Desc: true}}
+    specs := []OrderSpec{{Key: "name"}, {Key: " score ", Asc: false}, {Key: "name", Asc: false}}
     plan, err := BuildOrderPlanFromSpecs(specs, info, nil)
     if err != nil { t.Fatal(err) }
 

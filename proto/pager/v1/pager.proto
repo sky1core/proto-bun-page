@@ -7,7 +7,7 @@ option go_package = "github.com/sky1core/proto-bun-page/proto/pager/v1;pagerpb";
 // Logical order specification. Key refers to an allowed logical key.
 message Order {
   string key = 1;
-  bool desc = 2;
+  bool asc = 2;  // true = ASC, false = DESC (default)
 }
 
 // Page request/response contract.
