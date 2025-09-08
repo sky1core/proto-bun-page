@@ -15,15 +15,6 @@ import (
     pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
 )
 
-// Test helper that implements OrderSpecInterface
-type testOrderSpec struct {
-    key string
-    asc bool
-}
-
-func (o testOrderSpec) GetKey() string { return o.key }
-func (o testOrderSpec) GetAsc() bool { return o.asc }
-
 type Item struct {
     ID        int64     `bun:"id,pk,autoincrement"`
     CreatedAt time.Time `bun:"created_at"`
@@ -51,7 +42,7 @@ func newPager() *pager.Pager {
         MaxLimit:          100,
         LogLevel:          "error",
         AllowedOrderKeys:  []string{"created_at", "name", "score", "id"},
-        DefaultOrderSpecs: []pager.OrderSpecInterface{testOrderSpec{"created_at", false}},
+        DefaultOrderSpecs: []pager.OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}},
     })
 }
 
@@ -147,4 +138,3 @@ func BenchmarkCursor_NonCovering(b *testing.B) {
         }
     }
 }
-

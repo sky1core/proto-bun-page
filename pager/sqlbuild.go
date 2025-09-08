@@ -64,10 +64,7 @@ func BuildOrderPlan(orders []OrderSpecInterface, modelInfo *ModelInfo, allowedKe
     }
 
     // Resolve PK column
-    pkCol := "id"
-    if len(modelInfo.PKColumns) > 0 {
-        pkCol = modelInfo.PKColumns[0]
-    }
+    pkCol := firstPKColumn(modelInfo)
     // Ensure PK tiebreaker present following last effective direction
     present := map[string]struct{}{}
     for _, it := range plan.Items { present[it.Column] = struct{}{} }

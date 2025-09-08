@@ -6,7 +6,6 @@ import (
     "context"
     "fmt"
     "reflect"
-    "strings"
 
     pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
     "github.com/uptrace/bun"
@@ -63,7 +62,7 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
     // Build order from proto (direct interface usage)
     orders := make([]OrderSpecInterface, 0, len(in.Order))
     for _, o := range in.Order {
-        if o == nil || strings.TrimSpace(o.GetKey()) == "" { continue }
+        if o == nil { continue }
         orders = append(orders, o)
     }
     if len(orders) == 0 && len(p.opts.DefaultOrderSpecs) > 0 {
@@ -95,8 +94,7 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
         if cd != nil && len(cd.Values) > 0 {
             // Fetch anchor by single PK
             anchor := reflect.New(reflect.Indirect(reflect.ValueOf(model)).Type()).Interface()
-            pkCol := "id"
-            if len(modelInfo.PKColumns) > 0 { pkCol = modelInfo.PKColumns[0] }
+            pkCol := firstPKColumn(modelInfo)
             v, ok := cd.Values[pkCol]
             if !ok { return nil, NewInvalidRequestError("invalid cursor: missing pk") }
             // Normalize pk value to the model field type when possible

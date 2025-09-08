@@ -64,3 +64,13 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
     modelInfoCache.Store(t, info)
     return info, nil
 }
+
+// firstPKColumn returns the single primary key column or "id" as a safe default.
+// InferModelInfo guarantees at most one PK and ensures default to "id" when missing,
+// but this helper centralizes the fallback to avoid repetition.
+func firstPKColumn(info *ModelInfo) string {
+    if info != nil && len(info.PKColumns) > 0 {
+        return info.PKColumns[0]
+    }
+    return "id"
+}

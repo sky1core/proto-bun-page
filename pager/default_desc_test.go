@@ -2,6 +2,8 @@ package pager
 
 import (
     "testing"
+
+    pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
 )
 
 // TestDefaultOrderDirection ensures all fields default to DESC when not explicitly specified
@@ -25,7 +27,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "single field without Asc specified should default to DESC",
-            specs: []OrderSpecInterface{testOrderSpec{"name", false}}, // Asc not specified (false)
+            specs: []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: false}}, // Asc not specified (false)
             expected: []OrderItem{
                 {Column: "name", Direction: "DESC"},
                 {Column: "id", Direction: "DESC"}, // PK tiebreaker follows last direction
@@ -33,7 +35,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "single field with Asc=true should be ASC",
-            specs: []OrderSpecInterface{testOrderSpec{"name", true}},
+            specs: []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: true}},
             expected: []OrderItem{
                 {Column: "name", Direction: "ASC"},
                 {Column: "id", Direction: "ASC"},
@@ -41,7 +43,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "single field with Asc=false should be DESC",
-            specs: []OrderSpecInterface{testOrderSpec{"name", false}},
+            specs: []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: false}},
             expected: []OrderItem{
                 {Column: "name", Direction: "DESC"},
                 {Column: "id", Direction: "DESC"},
@@ -49,7 +51,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "multiple fields without explicit Asc should all default to DESC",
-            specs: []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"name", false}}, // Both without Asc specified (false)
+            specs: []OrderSpecInterface{&pagerpb.Order{Key: "score", Asc: false}, &pagerpb.Order{Key: "name", Asc: false}}, // Both without Asc specified (false)
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "DESC"},
@@ -58,7 +60,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "mixed explicit and implicit should respect explicit values",
-            specs: []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"name", false}}, // both should be DESC
+            specs: []OrderSpecInterface{&pagerpb.Order{Key: "score", Asc: false}, &pagerpb.Order{Key: "name", Asc: false}}, // both should be DESC
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "DESC"},
@@ -114,7 +116,7 @@ func TestDefaultOrderConsistency(t *testing.T) {
     })
 
     t.Run("implicit field defaults to DESC", func(t *testing.T) {
-        plan, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"created_at", false}}, info, nil)
+        plan, err := BuildOrderPlan([]OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}}, info, nil)
         if err != nil {
             t.Fatal(err)
         }

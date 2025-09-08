@@ -271,7 +271,7 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("default order applied when order empty", func(t *testing.T) {
         // Pager with DefaultOrder = -created_at
-        pg := New(&Options{DefaultLimit: 2, MaxLimit: 10, DefaultOrderSpecs: []OrderSpecInterface{testOrderSpec{"created_at", false}}, LogLevel: "error"})
+        pg := New(&Options{DefaultLimit: 2, MaxLimit: 10, DefaultOrderSpecs: []OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}}, LogLevel: "error"})
         var rows []TestModel
         in := &pagerpb.Page{Limit: 2}
         q := db.NewSelect().Model(&TestModel{})

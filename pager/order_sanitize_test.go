@@ -2,6 +2,8 @@ package pager
 
 import (
     "testing"
+
+    pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
 )
 
 func TestBuildOrderPlan_SanitizeAndDedupe(t *testing.T) {
@@ -9,7 +11,7 @@ func TestBuildOrderPlan_SanitizeAndDedupe(t *testing.T) {
     if err != nil { t.Fatal(err) }
 
     // Duplicate key with different directions; last wins
-    specs := []OrderSpecInterface{testOrderSpec{"name", false}, testOrderSpec{" score ", false}, testOrderSpec{"name", false}}
+    specs := []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: false}, &pagerpb.Order{Key: " score ", Asc: false}, &pagerpb.Order{Key: "name", Asc: false}}
     plan, err := BuildOrderPlan(specs, info, nil)
     if err != nil { t.Fatal(err) }
 

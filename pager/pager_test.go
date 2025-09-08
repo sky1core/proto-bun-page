@@ -8,6 +8,7 @@ import (
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/driver/sqliteshim"
+    pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
 )
 
 type TestModel struct {
@@ -68,7 +69,7 @@ func TestBuildOrderPlan(t *testing.T) {
         },
         {
             name:     "single field ascending",
-            specs:    []OrderSpecInterface{testOrderSpec{"name", true}},
+            specs:    []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: true}},
             expected: []OrderItem{
                 {Column: "name", Direction: "ASC"},
                 {Column: "id", Direction: "ASC"},
@@ -76,7 +77,7 @@ func TestBuildOrderPlan(t *testing.T) {
         },
         {
             name:     "single field descending",
-            specs:    []OrderSpecInterface{testOrderSpec{"created_at", false}},
+            specs:    []OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}},
             expected: []OrderItem{
                 {Column: "created_at", Direction: "DESC"},
                 {Column: "id", Direction: "DESC"},
@@ -84,7 +85,7 @@ func TestBuildOrderPlan(t *testing.T) {
         },
         {
             name:     "multiple fields mixed",
-            specs:    []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"name", true}},
+            specs:    []OrderSpecInterface{&pagerpb.Order{Key: "score", Asc: false}, &pagerpb.Order{Key: "name", Asc: true}},
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "ASC"},
@@ -147,26 +148,26 @@ func TestOrderByExactBunTagRequired(t *testing.T) {
     if err != nil { t.Fatal(err) }
 
     // Exact bun tag works (default is DESC now)
-    plan, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"created_at", false}}, info, nil)
+    plan, err := BuildOrderPlan([]OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}}, info, nil)
     if err != nil { t.Fatal(err) }
     if plan.Items[0].Column != "created_at" || plan.Items[0].Direction != "DESC" {
         t.Fatalf("expected created_at DESC, got %+v", plan.Items[0])
     }
 
     // Non-exact key should error
-    if _, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"CreatedAt", false}}, info, nil); err == nil {
+    if _, err := BuildOrderPlan([]OrderSpecInterface{&pagerpb.Order{Key: "CreatedAt", Asc: false}}, info, nil); err == nil {
         t.Fatal("expected error for non-exact bun column key")
     }
 
     // Explicit ASC works
-    planAsc, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"created_at", true}}, info, nil)
+    planAsc, err := BuildOrderPlan([]OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: true}}, info, nil)
     if err != nil { t.Fatal(err) }
     if planAsc.Items[0].Column != "created_at" || planAsc.Items[0].Direction != "ASC" {
         t.Fatalf("expected created_at ASC, got %+v", planAsc.Items[0])
     }
 
     // PK has tag with options; should parse up to comma and work
-    plan2, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"id", false}}, info, nil)
+    plan2, err := BuildOrderPlan([]OrderSpecInterface{&pagerpb.Order{Key: "id", Asc: false}}, info, nil)
     if err != nil { t.Fatal(err) }
     if plan2.Items[0].Column != "id" || plan2.Items[0].Direction != "DESC" {
         t.Fatalf("expected id DESC, got %+v", plan2.Items[0])
@@ -182,7 +183,7 @@ type noTagModel struct {
 func TestOrderByFieldWithoutBunTagErrors(t *testing.T) {
     info, err := InferModelInfo(&noTagModel{})
     if err != nil { t.Fatal(err) }
-    if _, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"no_tag", false}}, info, nil); err == nil {
+    if _, err := BuildOrderPlan([]OrderSpecInterface{&pagerpb.Order{Key: "no_tag", Asc: false}}, info, nil); err == nil {
         t.Fatal("expected error for field without bun tag")
     }
 }
@@ -191,7 +192,7 @@ func TestAllowedOrderKeysEnforced(t *testing.T) {
     model := &TestModel{}
     info, err := InferModelInfo(model)
     if err != nil { t.Fatal(err) }
-    specs := []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"created_at", false}}
+    specs := []OrderSpecInterface{&pagerpb.Order{Key: "score", Asc: false}, &pagerpb.Order{Key: "created_at", Asc: false}}
     if _, err := BuildOrderPlan(specs, info, []string{"created_at"}); err == nil {
         t.Fatal("expected error for unsupported order key")
     }
