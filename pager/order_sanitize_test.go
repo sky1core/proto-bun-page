@@ -25,8 +25,8 @@ func TestBuildOrderPlan_SanitizeAndDedupe(t *testing.T) {
     if plan.Items[1].Column != "name" || plan.Items[1].Direction != "DESC" {
         t.Fatalf("expected second item to be name DESC after dedupe, got %+v", plan.Items[1])
     }
-    // PK tiebreaker appended; direction follows last user key
-    if plan.Items[len(plan.Items)-1].Column != "id" || plan.Items[len(plan.Items)-1].Direction != plan.Items[0].Direction {
-        t.Fatalf("expected pk appended with same direction as last user key")
+    // PK tiebreaker appended; direction defaults to DESC
+    if plan.Items[len(plan.Items)-1].Column != "id" || plan.Items[len(plan.Items)-1].Direction != "DESC" {
+        t.Fatalf("expected pk appended with DESC direction")
     }
 }

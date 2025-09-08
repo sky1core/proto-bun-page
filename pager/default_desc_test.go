@@ -30,7 +30,7 @@ func TestDefaultOrderDirection(t *testing.T) {
             specs: []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: false}}, // Asc not specified (false)
             expected: []OrderItem{
                 {Column: "name", Direction: "DESC"},
-                {Column: "id", Direction: "DESC"}, // PK tiebreaker follows last direction
+                {Column: "id", Direction: "DESC"}, // PK tiebreaker defaults to DESC
             },
         },
         {
@@ -38,7 +38,7 @@ func TestDefaultOrderDirection(t *testing.T) {
             specs: []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: true}},
             expected: []OrderItem{
                 {Column: "name", Direction: "ASC"},
-                {Column: "id", Direction: "ASC"},
+                {Column: "id", Direction: "DESC"},
             },
         },
         {

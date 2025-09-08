@@ -40,17 +40,23 @@ func BuildOrderPlan(orders []OrderSpecInterface, modelInfo *ModelInfo, allowedKe
     // track to dedupe by column while preserving last occurrence order
     for _, order := range orders {
         nk := strings.TrimSpace(order.GetKey())
-        if nk == "" { continue }
-        if len(allowSet) > 0 {
-            if _, ok := allowSet[nk]; !ok {
+        var column string
+        if nk == "" {
+            // Empty key -> treat as explicit PK order
+            column = firstPKColumn(modelInfo)
+        } else {
+            if len(allowSet) > 0 {
+                if _, ok := allowSet[nk]; !ok {
+                    return nil, NewInvalidRequestError("unsupported order key: " + nk)
+                }
+            }
+            var exists bool
+            column, exists = modelInfo.KeyToColumn[nk]
+            if !exists {
                 return nil, NewInvalidRequestError("unsupported order key: " + nk)
             }
         }
-        column, exists := modelInfo.KeyToColumn[nk]
-        if !exists {
-            return nil, NewInvalidRequestError("unsupported order key: " + nk)
-        }
-        dir := "DESC"  // Default to DESC
+        dir := "DESC"  // Default to DESC for unspecified
         if order.GetAsc() { dir = "ASC" }   // explicitly true -> ASC
         // remove previous occurrence of this column, if any
         if len(plan.Items) > 0 {
@@ -68,10 +74,9 @@ func BuildOrderPlan(orders []OrderSpecInterface, modelInfo *ModelInfo, allowedKe
     // Ensure PK tiebreaker present following last effective direction
     present := map[string]struct{}{}
     for _, it := range plan.Items { present[it.Column] = struct{}{} }
-    lastDir := "DESC"
-    if len(plan.Items) > 0 { lastDir = plan.Items[len(plan.Items)-1].Direction }
     if _, ok := present[pkCol]; !ok {
-        plan.Items = append(plan.Items, OrderItem{Column: pkCol, Direction: lastDir})
+        // PK tiebreaker defaults to DESC regardless of previous directions
+        plan.Items = append(plan.Items, OrderItem{Column: pkCol, Direction: "DESC"})
     }
     if len(plan.Items) == 0 {
         plan.Items = append(plan.Items, OrderItem{Column: pkCol, Direction: "DESC"})
