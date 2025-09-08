@@ -59,7 +59,7 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
     specs := make([]OrderSpec, 0, len(in.Order))
     for _, o := range in.Order {
         if o == nil || strings.TrimSpace(o.Key) == "" { continue }
-        specs = append(specs, OrderSpec{Key: o.Key, Desc: o.Desc})
+        specs = append(specs, OrderSpec{Key: o.Key, Asc: o.Asc})
     }
     if len(specs) == 0 && len(p.opts.DefaultOrderSpecs) > 0 {
         specs = append(specs, p.opts.DefaultOrderSpecs...)

@@ -16,7 +16,11 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("offset pagination - first page", func(t *testing.T) {
         var results []TestModel
-        in := &pagerpb.Page{Page: 1, Limit: 2, Order: []*pagerpb.Order{{Key: "score", Desc: true}}}
+        in := &pagerpb.Page{
+            Limit: 2,
+            Order: []*pagerpb.Order{{Key: "score", Asc: false}},
+            Selector: &pagerpb.Page_Page{Page: 1},
+        }
         q := db.NewSelect().Model(&TestModel{})
         out, err := pager.ApplyAndScan(ctx, q, in, &results)
         if err != nil {
@@ -27,7 +31,7 @@ func TestPagerIntegration(t *testing.T) {
 			t.Errorf("expected 2 items, got %d", len(results))
 		}
 
-        if out.Page != 1 {
+        if page, ok := out.Selector.(*pagerpb.Page_Page); !ok || page.Page != 1 {
             t.Error("expected page echo 1")
         }
 
@@ -40,22 +44,27 @@ func TestPagerIntegration(t *testing.T) {
     t.Run("cursor pagination", func(t *testing.T) {
         var results []TestModel
         
-        in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+        in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
         q := db.NewSelect().Model(&TestModel{})
         out, err := pager.ApplyAndScan(ctx, q, in, &results)
         if err != nil {
             t.Fatal(err)
         }
 
-        t.Logf("First page results: %d items, nextCursor: %v", 
-                len(results), out.Cursor)
-		
-        if out.Cursor == "" {
+        cursor, ok := out.Selector.(*pagerpb.Page_Cursor)
+        if !ok || cursor.Cursor == "" {
             t.Fatal("expected cursor to be set")
         }
+        
+        t.Logf("First page results: %d items, nextCursor: %v", 
+                len(results), cursor.Cursor)
 
         var nextResults []TestModel
-        in2 := &pagerpb.Page{Cursor: out.Cursor, Limit: 2, Order: in.Order}
+        in2 := &pagerpb.Page{
+            Limit: 2, 
+            Order: in.Order,
+            Selector: &pagerpb.Page_Cursor{Cursor: cursor.Cursor},
+        }
         q2 := db.NewSelect().Model(&TestModel{})
         _, err = pager.ApplyAndScan(ctx, q2, in2, &nextResults)
         if err != nil {
@@ -74,7 +83,10 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("empty result", func(t *testing.T) {
         var results []TestModel
-        in := &pagerpb.Page{Page: 100, Limit: 10}
+        in := &pagerpb.Page{
+            Limit: 10,
+            Selector: &pagerpb.Page_Page{Page: 100},
+        }
         q := db.NewSelect().Model(&TestModel{})
         _, err := pager.ApplyAndScan(ctx, q, in, &results)
         if err != nil {
@@ -89,7 +101,7 @@ func TestPagerIntegration(t *testing.T) {
 
 	t.Run("mixed order", func(t *testing.T) {
 		var results []TestModel
-        in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "score", Desc: true}, {Key: "name", Desc: false}}}
+        in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "score", Asc: false}, {Key: "name", Asc: true}}}
         q := db.NewSelect().Model(&TestModel{})
         _, err := pager.ApplyAndScan(ctx, q, in, &results)
         if err != nil {
@@ -113,18 +125,19 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("stale cursor should error", func(t *testing.T) {
         var results []TestModel
-        in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+        in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
         q := db.NewSelect().Model(&TestModel{})
         out, err := pager.ApplyAndScan(ctx, q, in, &results)
         if err != nil {
             t.Fatal(err)
         }
-        if out.Cursor == "" {
+        cursor, ok := out.Selector.(*pagerpb.Page_Cursor)
+        if !ok || cursor.Cursor == "" {
             t.Fatal("expected next cursor")
         }
         info, err := InferModelInfo(&TestModel{})
         if err != nil { t.Fatal(err) }
-        cd, err := DecodeCursor(out.Cursor, info)
+        cd, err := DecodeCursor(cursor.Cursor, info)
         if err != nil {
             t.Fatal(err)
         }
@@ -146,7 +159,12 @@ func TestPagerIntegration(t *testing.T) {
         }
         // use stale cursor
         var next []TestModel
-        in2 := &pagerpb.Page{Cursor: out.Cursor, Limit: 2, Order: in.Order}
+        cursor2, _ := out.Selector.(*pagerpb.Page_Cursor)
+        in2 := &pagerpb.Page{
+            Limit: 2,
+            Order: in.Order,
+            Selector: &pagerpb.Page_Cursor{Cursor: cursor2.Cursor},
+        }
         q2 := db.NewSelect().Model(&TestModel{})
         _, err = pager.ApplyAndScan(ctx, q2, in2, &next)
         if err == nil {
@@ -180,16 +198,21 @@ func TestPagerIntegration(t *testing.T) {
         if err != nil { t.Fatal(err) }
 
         var first []TestModel
-        in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}}
+        in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "created_at", Asc: false}}}
         q := db.NewSelect().Model(&TestModel{})
         out, err := pager.ApplyAndScan(ctx, q, in, &first)
         if err != nil { t.Fatal(err) }
-        if out.Cursor == "" { t.Fatal("need next cursor") }
+        cursor4, ok := out.Selector.(*pagerpb.Page_Cursor)
+        if !ok || cursor4.Cursor == "" { t.Fatal("need next cursor") }
         lastFirst := first[len(first)-1]
 
         var second []TestModel
         q2 := db.NewSelect().Model(&TestModel{})
-        _, err = pager.ApplyAndScan(ctx, q2, &pagerpb.Page{Cursor: out.Cursor, Limit: 3, Order: in.Order}, &second)
+        _, err = pager.ApplyAndScan(ctx, q2, &pagerpb.Page{
+            Limit: 3,
+            Order: in.Order,
+            Selector: &pagerpb.Page_Cursor{Cursor: cursor4.Cursor},
+        }, &second)
         if err != nil { t.Fatal(err) }
         // Ensure last item of first page is not repeated in second page
         for _, r := range second {
@@ -208,7 +231,11 @@ func TestPagerIntegration(t *testing.T) {
         fetched := 0
         for {
             var batch []TestModel
-            in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "created_at", Desc: true}}, Cursor: cursor}
+            in := &pagerpb.Page{
+                Limit: 3,
+                Order: []*pagerpb.Order{{Key: "created_at", Asc: false}},
+                Selector: &pagerpb.Page_Cursor{Cursor: cursor},
+            }
             q := db.NewSelect().Model(&TestModel{})
             out, err := pager.ApplyAndScan(ctx, q, in, &batch)
             if err != nil { t.Fatal(err) }
@@ -217,10 +244,11 @@ func TestPagerIntegration(t *testing.T) {
                 seen[r.ID] = true
                 fetched++
             }
-            if out.Cursor == "" {
+            cursorResp, ok := out.Selector.(*pagerpb.Page_Cursor)
+            if !ok || cursorResp.Cursor == "" {
                 break
             }
-            cursor = out.Cursor
+            cursor = cursorResp.Cursor
         }
         if fetched != total {
             t.Fatalf("scanned %d rows but total is %d", fetched, total)
@@ -229,7 +257,10 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("invalid cursor token returns error", func(t *testing.T) {
         var results []TestModel
-        in := &pagerpb.Page{Limit: 2, Cursor: "!!!not-base64"}
+        in := &pagerpb.Page{
+            Limit: 2,
+            Selector: &pagerpb.Page_Cursor{Cursor: "!!!not-base64"},
+        }
         q := db.NewSelect().Model(&TestModel{})
         if _, err := pager.ApplyAndScan(ctx, q, in, &results); err == nil {
             t.Fatal("expected invalid cursor error")
@@ -238,7 +269,7 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("default order applied when order empty", func(t *testing.T) {
         // Pager with DefaultOrder = -created_at
-        pg := New(&Options{DefaultLimit: 2, MaxLimit: 10, DefaultOrderSpecs: []OrderSpec{{Key: "created_at", Desc: true}}, LogLevel: "error"})
+        pg := New(&Options{DefaultLimit: 2, MaxLimit: 10, DefaultOrderSpecs: []OrderSpec{{Key: "created_at", Asc: false}}, LogLevel: "error"})
         var rows []TestModel
         in := &pagerpb.Page{Limit: 2}
         q := db.NewSelect().Model(&TestModel{})
@@ -254,7 +285,7 @@ func TestPagerIntegration(t *testing.T) {
     t.Run("order requires exact bun column key", func(t *testing.T) {
         pg := New(&Options{DefaultLimit: 3, MaxLimit: 10, AllowedOrderKeys: []string{"name"}, LogLevel: "error"})
         var rows []TestModel
-        in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "Name", Desc: false}}}
+        in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "Name", Asc: true}}}
         q := db.NewSelect().Model(&TestModel{})
         if _, err := pg.ApplyAndScan(ctx, q, in, &rows); err == nil {
             t.Fatal("expected error for non-exact order key 'Name'")

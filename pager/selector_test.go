@@ -12,7 +12,7 @@ func TestSelectorSemantics(t *testing.T) {
     db := setupTestDB(t)
     defer db.Close()
     ctx := context.Background()
-    p := New(&Options{DefaultLimit: 2, MaxLimit: 10, LogLevel: "error", DefaultOrderSpecs: []OrderSpec{{Key: "created_at", Desc: true}}})
+    p := New(&Options{DefaultLimit: 2, MaxLimit: 10, LogLevel: "error", DefaultOrderSpecs: []OrderSpec{{Key: "created_at", Asc: false}}})
 
     // 1) Neither page nor cursor set -> defaults to cursor mode (from start)
     {
