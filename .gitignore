@@ -30,5 +30,10 @@ docs/pager/
 .vscode/
 .claude/
 
+# Local Go caches (do not commit)
+.gocache/
+.gomodcache/
+.gotmp/
+
 # Generated protobuf files
 **/*.pb.go

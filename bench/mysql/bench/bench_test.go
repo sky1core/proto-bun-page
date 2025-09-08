@@ -42,7 +42,7 @@ func newPager() *pager.Pager {
         MaxLimit:          100,
         LogLevel:          "error",
         AllowedOrderKeys:  []string{"created_at", "name", "score", "id"},
-        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Asc: false}},
+        DefaultOrderSpecs: []pager.OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}},
     })
 }
 
@@ -138,4 +138,3 @@ func BenchmarkCursor_NonCovering(b *testing.B) {
         }
     }
 }
-

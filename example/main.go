@@ -57,7 +57,7 @@ func main() {
         MaxLimit:     10,
         LogLevel:     "info",
         AllowedOrderKeys:  []string{"created_at", "price", "name", "id"},
-        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Asc: false}},
+        DefaultOrderSpecs: []pager.OrderSpecInterface{&pagerpb.Order{Key: "created_at", Asc: false}},
     })
 
     fmt.Println("=== Proto Adapter Example ===")

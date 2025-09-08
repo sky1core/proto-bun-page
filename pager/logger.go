@@ -3,7 +3,6 @@ package pager
 import (
     "log/slog"
     "os"
-    "time"
 )
 
 type Logger interface {
@@ -54,12 +53,4 @@ func (l *defaultLogger) Error(msg string, args ...interface{}) {
 // NewSlogLoggerAdapter wraps a slog.Logger to satisfy this package's Logger interface.
 func NewSlogLoggerAdapter(l *slog.Logger) Logger { return &defaultLogger{l: l} }
 
-func logQuery(logger Logger, mode string, limit int, order string, rowCount int, elapsed time.Duration) {
-	logger.Info("pager query executed",
-		"mode", mode,
-		"limit", limit,
-		"order", order,
-		"rows", rowCount,
-		"elapsed_ms", elapsed.Milliseconds(),
-	)
-}
+// Intentionally minimal logger interface and default adapter.

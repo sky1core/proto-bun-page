@@ -8,22 +8,17 @@ import (
     "strconv"
 )
 
-// CursorData represents the decoded cursor values
+// CursorData represents decoded cursor values carried by a cursor token.
 type CursorData struct {
     Values map[string]interface{}
-    Mode   string // "offset" or "cursor"
 }
 
 // EncodeCursor creates a cursor string from row values
 func EncodeCursor(orderPlan *OrderPlan, row map[string]interface{}, modelInfo *ModelInfo) (string, error) {
-    cursorData := CursorData{
-        Values: make(map[string]interface{}),
-        Mode:   "cursor",
-    }
+    cursorData := CursorData{Values: make(map[string]interface{})}
 
     // Encode single primary key value for cursor token
-    pk := "id"
-    if len(modelInfo.PKColumns) > 0 { pk = modelInfo.PKColumns[0] }
+    pk := firstPKColumn(modelInfo)
     if val, ok := row[pk]; ok {
         cursorData.Values[pk] = val
     }
@@ -49,12 +44,11 @@ func DecodeCursor(cursor string, modelInfo *ModelInfo) (*CursorData, error) {
         return nil, NewInvalidRequestError("invalid cursor format")
     }
     s := string(decoded)
-    cd := &CursorData{Values: map[string]interface{}{}, Mode: "cursor"}
+    cd := &CursorData{Values: map[string]interface{}{}}
     if len(s) == 0 {
         return cd, nil
     }
-    pk := "id"
-    if len(modelInfo.PKColumns) > 0 { pk = modelInfo.PKColumns[0] }
+    pk := firstPKColumn(modelInfo)
     sv := s
     if iv, err := strconv.ParseInt(sv, 10, 64); err == nil {
         cd.Values[pk] = iv

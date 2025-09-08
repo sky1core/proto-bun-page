@@ -16,13 +16,16 @@ type OrderPlan struct {
     Items []OrderItem
 }
 
-type OrderSpec struct {
-    Key string
-    Asc bool  // true = ASC, false = DESC (default)
+// OrderSpecInterface defines the interface for order specifications
+type OrderSpecInterface interface {
+    GetKey() string
+    GetAsc() bool
 }
 
-// BuildOrderPlanFromSpecs builds an OrderPlan from structured specs (preferred path).
-func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKeys []string) (*OrderPlan, error) {
+
+
+// BuildOrderPlan builds an OrderPlan from order specifications (preferred path).
+func BuildOrderPlan(orders []OrderSpecInterface, modelInfo *ModelInfo, allowedKeys []string) (*OrderPlan, error) {
     plan := &OrderPlan{}
 
     allowSet := map[string]struct{}{}
@@ -35,8 +38,8 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
     }
 
     // track to dedupe by column while preserving last occurrence order
-    for _, s := range specs {
-        nk := strings.TrimSpace(s.Key)
+    for _, order := range orders {
+        nk := strings.TrimSpace(order.GetKey())
         if nk == "" { continue }
         if len(allowSet) > 0 {
             if _, ok := allowSet[nk]; !ok {
@@ -48,7 +51,7 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
             return nil, NewInvalidRequestError("unsupported order key: " + nk)
         }
         dir := "DESC"  // Default to DESC
-        if s.Asc { dir = "ASC" }   // explicitly true -> ASC
+        if order.GetAsc() { dir = "ASC" }   // explicitly true -> ASC
         // remove previous occurrence of this column, if any
         if len(plan.Items) > 0 {
             out := plan.Items[:0]
@@ -61,10 +64,7 @@ func BuildOrderPlanFromSpecs(specs []OrderSpec, modelInfo *ModelInfo, allowedKey
     }
 
     // Resolve PK column
-    pkCol := "id"
-    if len(modelInfo.PKColumns) > 0 {
-        pkCol = modelInfo.PKColumns[0]
-    }
+    pkCol := firstPKColumn(modelInfo)
     // Ensure PK tiebreaker present following last effective direction
     present := map[string]struct{}{}
     for _, it := range plan.Items { present[it.Column] = struct{}{} }
