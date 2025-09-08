@@ -2,10 +2,12 @@ package pager
 
 import (
     "context"
+    "strings"
     "testing"
 
     pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
 )
+
 
 func TestPagerIntegration(t *testing.T) {
 	db := setupTestDB(t)
@@ -269,7 +271,7 @@ func TestPagerIntegration(t *testing.T) {
 
     t.Run("default order applied when order empty", func(t *testing.T) {
         // Pager with DefaultOrder = -created_at
-        pg := New(&Options{DefaultLimit: 2, MaxLimit: 10, DefaultOrderSpecs: []OrderSpec{{Key: "created_at", Asc: false}}, LogLevel: "error"})
+        pg := New(&Options{DefaultLimit: 2, MaxLimit: 10, DefaultOrderSpecs: []OrderSpecInterface{testOrderSpec{"created_at", false}}, LogLevel: "error"})
         var rows []TestModel
         in := &pagerpb.Page{Limit: 2}
         q := db.NewSelect().Model(&TestModel{})
@@ -353,12 +355,12 @@ func TestCursorWhere(t *testing.T) {
 		}
 
 		// Should build: (score < ?) OR (score = ? AND name > ?) OR (score = ? AND name = ? AND id > ?)
-		if !contains(where, "score < ?") {
-			t.Error("expected 'score < ?' in WHERE clause")
-		}
-		if !contains(where, "score = ? AND name > ?") {
-			t.Error("expected 'score = ? AND name > ?' in WHERE clause")
-		}
+        if !strings.Contains(where, "score < ?") {
+            t.Error("expected 'score < ?' in WHERE clause")
+        }
+        if !strings.Contains(where, "score = ? AND name > ?") {
+            t.Error("expected 'score = ? AND name > ?' in WHERE clause")
+        }
 
 		if len(args) != 6 {
 			t.Errorf("expected 6 args, got %d", len(args))
@@ -370,6 +372,4 @@ func intPtr(i int) *int {
 	return &i
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[:len(substr)] == substr || len(s) > len(substr) && contains(s[1:], substr)
-}
+// uses strings.Contains for clarity

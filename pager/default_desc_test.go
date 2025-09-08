@@ -13,7 +13,7 @@ func TestDefaultOrderDirection(t *testing.T) {
 
     tests := []struct {
         name     string
-        specs    []OrderSpec
+        specs    []OrderSpecInterface
         expected []OrderItem
     }{
         {
@@ -25,7 +25,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "single field without Asc specified should default to DESC",
-            specs: []OrderSpec{{Key: "name"}}, // Asc not specified (false)
+            specs: []OrderSpecInterface{testOrderSpec{"name", false}}, // Asc not specified (false)
             expected: []OrderItem{
                 {Column: "name", Direction: "DESC"},
                 {Column: "id", Direction: "DESC"}, // PK tiebreaker follows last direction
@@ -33,7 +33,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "single field with Asc=true should be ASC",
-            specs: []OrderSpec{{Key: "name", Asc: true}},
+            specs: []OrderSpecInterface{testOrderSpec{"name", true}},
             expected: []OrderItem{
                 {Column: "name", Direction: "ASC"},
                 {Column: "id", Direction: "ASC"},
@@ -41,7 +41,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "single field with Asc=false should be DESC",
-            specs: []OrderSpec{{Key: "name", Asc: false}},
+            specs: []OrderSpecInterface{testOrderSpec{"name", false}},
             expected: []OrderItem{
                 {Column: "name", Direction: "DESC"},
                 {Column: "id", Direction: "DESC"},
@@ -49,7 +49,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "multiple fields without explicit Asc should all default to DESC",
-            specs: []OrderSpec{{Key: "score"}, {Key: "name"}}, // Both without Asc specified (false)
+            specs: []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"name", false}}, // Both without Asc specified (false)
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "DESC"},
@@ -58,7 +58,7 @@ func TestDefaultOrderDirection(t *testing.T) {
         },
         {
             name:  "mixed explicit and implicit should respect explicit values",
-            specs: []OrderSpec{{Key: "score", Asc: false}, {Key: "name"}}, // both should be DESC
+            specs: []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"name", false}}, // both should be DESC
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "DESC"},
@@ -69,7 +69,7 @@ func TestDefaultOrderDirection(t *testing.T) {
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            plan, err := BuildOrderPlanFromSpecs(tt.specs, info, nil)
+            plan, err := BuildOrderPlan(tt.specs, info, nil)
             if err != nil {
                 t.Fatalf("unexpected error: %v", err)
             }
@@ -98,7 +98,7 @@ func TestDefaultOrderConsistency(t *testing.T) {
     }
 
     t.Run("no specs defaults to DESC", func(t *testing.T) {
-        plan, err := BuildOrderPlanFromSpecs(nil, info, nil)
+        plan, err := BuildOrderPlan(nil, info, nil)
         if err != nil {
             t.Fatal(err)
         }
@@ -114,7 +114,7 @@ func TestDefaultOrderConsistency(t *testing.T) {
     })
 
     t.Run("implicit field defaults to DESC", func(t *testing.T) {
-        plan, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "created_at"}}, info, nil)
+        plan, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"created_at", false}}, info, nil)
         if err != nil {
             t.Fatal(err)
         }

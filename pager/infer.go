@@ -9,7 +9,6 @@ import (
 type ModelInfo struct {
     TableName    string
     PKColumns    []string
-    ColumnToKey  map[string]string
     KeyToColumn  map[string]string
     // FieldIndexByColumn maps bun column name -> struct field index
     FieldIndexByColumn map[string]int
@@ -26,7 +25,6 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
     }
 
     info := &ModelInfo{
-        ColumnToKey:        make(map[string]string),
         KeyToColumn:        make(map[string]string),
         FieldIndexByColumn: make(map[string]int),
     }
@@ -46,7 +44,6 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
         }
 
         // Logical key equals bun column name
-        info.ColumnToKey[columnName] = columnName
         info.KeyToColumn[columnName] = columnName
         info.FieldIndexByColumn[columnName] = i
 
@@ -59,7 +56,6 @@ func InferModelInfo(model interface{}) (*ModelInfo, error) {
 
     if len(info.PKColumns) == 0 {
         info.PKColumns = []string{"id"}
-        info.ColumnToKey["id"] = "id"
         info.KeyToColumn["id"] = "id"
     }
     if len(info.PKColumns) > 1 {

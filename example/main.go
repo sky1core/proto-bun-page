@@ -14,6 +14,15 @@ import (
     "github.com/uptrace/bun/driver/sqliteshim"
 )
 
+// Helper that implements OrderSpecInterface
+type orderSpec struct {
+    key string
+    asc bool
+}
+
+func (o orderSpec) GetKey() string { return o.key }
+func (o orderSpec) GetAsc() bool { return o.asc }
+
 type Product struct {
 	ID        int64     `bun:"id,pk,autoincrement"`
 	Name      string    `bun:"name"`
@@ -57,7 +66,7 @@ func main() {
         MaxLimit:     10,
         LogLevel:     "info",
         AllowedOrderKeys:  []string{"created_at", "price", "name", "id"},
-        DefaultOrderSpecs: []pager.OrderSpec{{Key: "created_at", Asc: false}},
+        DefaultOrderSpecs: []pager.OrderSpecInterface{orderSpec{"created_at", false}},
     })
 
     fmt.Println("=== Proto Adapter Example ===")

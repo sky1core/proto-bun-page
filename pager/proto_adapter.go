@@ -1,6 +1,8 @@
 package pager
 
 import (
+    "database/sql"
+    "errors"
     "context"
     "fmt"
     "reflect"
@@ -52,19 +54,24 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
     }
     modelInfo, err := InferModelInfo(model)
     if err != nil {
+        if pe, ok := err.(*PagerError); ok {
+            return nil, pe
+        }
         return nil, NewInternalError(fmt.Sprintf("failed to infer model info: %v", err))
     }
 
-    // Build order specs from proto
-    specs := make([]OrderSpec, 0, len(in.Order))
+    // Build order from proto (direct interface usage)
+    orders := make([]OrderSpecInterface, 0, len(in.Order))
     for _, o := range in.Order {
-        if o == nil || strings.TrimSpace(o.Key) == "" { continue }
-        specs = append(specs, OrderSpec{Key: o.Key, Asc: o.Asc})
+        if o == nil || strings.TrimSpace(o.GetKey()) == "" { continue }
+        orders = append(orders, o)
     }
-    if len(specs) == 0 && len(p.opts.DefaultOrderSpecs) > 0 {
-        specs = append(specs, p.opts.DefaultOrderSpecs...)
+    if len(orders) == 0 && len(p.opts.DefaultOrderSpecs) > 0 {
+        for _, spec := range p.opts.DefaultOrderSpecs {
+            orders = append(orders, spec)
+        }
     }
-    orderPlan, err := BuildOrderPlanFromSpecs(specs, modelInfo, p.opts.AllowedOrderKeys)
+    orderPlan, err := BuildOrderPlan(orders, modelInfo, p.opts.AllowedOrderKeys)
     if err != nil {
         if pe, ok := err.(*PagerError); ok {
             return nil, pe
@@ -74,7 +81,7 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
 
     // Limit handling
     limit, clamped := normalizeLimit(in.Limit, p.opts)
-    if clamped { p.logger.Warn("limit clamped from %d to %d (max)", in.Limit, p.opts.MaxLimit) }
+    if clamped { p.logger.Warn("limit clamped", "from", in.Limit, "to", p.opts.MaxLimit) }
 
     // Determine mode and apply WHERE
     mode := "offset"
@@ -100,7 +107,10 @@ func (p *Pager) ApplyAndScan(ctx context.Context, q *bun.SelectQuery, in *pagerp
             }
             aq := q.DB().NewSelect().Model(anchor).Where(pkCol+" = ?", v).Limit(1)
             if err := aq.Scan(ctx); err != nil {
-                return nil, NewStaleCursorError()
+                if errors.Is(err, sql.ErrNoRows) {
+                    return nil, NewStaleCursorError()
+                }
+                return nil, NewInternalError(fmt.Sprintf("anchor fetch failed: %v", err))
             }
             anchorVals, err := ExtractRowValues(anchor, orderPlan, modelInfo)
             if err != nil {

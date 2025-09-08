@@ -5,7 +5,7 @@ type Options struct {
     MaxLimit     int
     LogLevel     string
     AllowedOrderKeys []string
-    DefaultOrderSpecs []OrderSpec
+    DefaultOrderSpecs []OrderSpecInterface
 }
 
 func DefaultOptions() *Options {

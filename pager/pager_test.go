@@ -17,11 +17,7 @@ type TestModel struct {
 	Score     int    `bun:"score"`
 }
 
-type TestModelComposite struct {
-    Key1 int64 `bun:"key1,pk"`
-    Key2 int64 `bun:"key2,pk"`
-    A    int   `bun:"a"`
-}
+// Composite PK types are intentionally unsupported by the library.
 
 func setupTestDB(t *testing.T) *bun.DB {
 	sqlDB, err := sql.Open(sqliteshim.ShimName, ":memory:")
@@ -62,7 +58,7 @@ func TestBuildOrderPlan(t *testing.T) {
 
     tests := []struct {
         name     string
-        specs    []OrderSpec
+        specs    []OrderSpecInterface
         expected []OrderItem
     }{
         {
@@ -72,7 +68,7 @@ func TestBuildOrderPlan(t *testing.T) {
         },
         {
             name:     "single field ascending",
-            specs:    []OrderSpec{{Key: "name", Asc: true}},
+            specs:    []OrderSpecInterface{testOrderSpec{"name", true}},
             expected: []OrderItem{
                 {Column: "name", Direction: "ASC"},
                 {Column: "id", Direction: "ASC"},
@@ -80,7 +76,7 @@ func TestBuildOrderPlan(t *testing.T) {
         },
         {
             name:     "single field descending",
-            specs:    []OrderSpec{{Key: "created_at", Asc: false}},
+            specs:    []OrderSpecInterface{testOrderSpec{"created_at", false}},
             expected: []OrderItem{
                 {Column: "created_at", Direction: "DESC"},
                 {Column: "id", Direction: "DESC"},
@@ -88,7 +84,7 @@ func TestBuildOrderPlan(t *testing.T) {
         },
         {
             name:     "multiple fields mixed",
-            specs:    []OrderSpec{{Key: "score", Asc: false}, {Key: "name", Asc: true}},
+            specs:    []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"name", true}},
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "ASC"},
@@ -99,7 +95,7 @@ func TestBuildOrderPlan(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-            plan, err := BuildOrderPlanFromSpecs(tt.specs, info, nil)
+            plan, err := BuildOrderPlan(tt.specs, info, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,26 +147,26 @@ func TestOrderByExactBunTagRequired(t *testing.T) {
     if err != nil { t.Fatal(err) }
 
     // Exact bun tag works (default is DESC now)
-    plan, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "created_at"}}, info, nil)
+    plan, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"created_at", false}}, info, nil)
     if err != nil { t.Fatal(err) }
     if plan.Items[0].Column != "created_at" || plan.Items[0].Direction != "DESC" {
         t.Fatalf("expected created_at DESC, got %+v", plan.Items[0])
     }
 
     // Non-exact key should error
-    if _, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "CreatedAt"}}, info, nil); err == nil {
+    if _, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"CreatedAt", false}}, info, nil); err == nil {
         t.Fatal("expected error for non-exact bun column key")
     }
 
     // Explicit ASC works
-    planAsc, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "created_at", Asc: true}}, info, nil)
+    planAsc, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"created_at", true}}, info, nil)
     if err != nil { t.Fatal(err) }
     if planAsc.Items[0].Column != "created_at" || planAsc.Items[0].Direction != "ASC" {
         t.Fatalf("expected created_at ASC, got %+v", planAsc.Items[0])
     }
 
     // PK has tag with options; should parse up to comma and work
-    plan2, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "id", Asc: false}}, info, nil)
+    plan2, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"id", false}}, info, nil)
     if err != nil { t.Fatal(err) }
     if plan2.Items[0].Column != "id" || plan2.Items[0].Direction != "DESC" {
         t.Fatalf("expected id DESC, got %+v", plan2.Items[0])
@@ -186,7 +182,7 @@ type noTagModel struct {
 func TestOrderByFieldWithoutBunTagErrors(t *testing.T) {
     info, err := InferModelInfo(&noTagModel{})
     if err != nil { t.Fatal(err) }
-    if _, err := BuildOrderPlanFromSpecs([]OrderSpec{{Key: "no_tag"}}, info, nil); err == nil {
+    if _, err := BuildOrderPlan([]OrderSpecInterface{testOrderSpec{"no_tag", false}}, info, nil); err == nil {
         t.Fatal("expected error for field without bun tag")
     }
 }
@@ -195,8 +191,8 @@ func TestAllowedOrderKeysEnforced(t *testing.T) {
     model := &TestModel{}
     info, err := InferModelInfo(model)
     if err != nil { t.Fatal(err) }
-    specs := []OrderSpec{{Key:"score", Asc:false}, {Key:"created_at"}}
-    if _, err := BuildOrderPlanFromSpecs(specs, info, []string{"created_at"}); err == nil {
+    specs := []OrderSpecInterface{testOrderSpec{"score", false}, testOrderSpec{"created_at", false}}
+    if _, err := BuildOrderPlan(specs, info, []string{"created_at"}); err == nil {
         t.Fatal("expected error for unsupported order key")
     }
 }

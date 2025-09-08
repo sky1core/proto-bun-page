@@ -7,12 +7,13 @@ import (
     pagerpb "github.com/sky1core/proto-bun-page/proto/pager/v1"
 )
 
+
 // Covers: page/cursor presence semantics
 func TestSelectorSemantics(t *testing.T) {
     db := setupTestDB(t)
     defer db.Close()
     ctx := context.Background()
-    p := New(&Options{DefaultLimit: 2, MaxLimit: 10, LogLevel: "error", DefaultOrderSpecs: []OrderSpec{{Key: "created_at", Asc: false}}})
+    p := New(&Options{DefaultLimit: 2, MaxLimit: 10, LogLevel: "error", DefaultOrderSpecs: []OrderSpecInterface{testOrderSpec{"created_at", false}}})
 
     // 1) Neither page nor cursor set -> defaults to cursor mode (from start)
     {

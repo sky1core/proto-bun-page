@@ -4,9 +4,7 @@ WORKDIR /app
 COPY . /app
 
 # Download dependencies and prepare Go tools  
-RUN go env -w GOCACHE=/root/.cache/go-build \
- && go env -w GOMODCACHE=/root/go/pkg/mod \
- && go mod download \
+RUN go mod download \
  && go install golang.org/x/perf/cmd/benchstat@latest
 
 # Bench entrypoint (tracked under bench/mysql)
