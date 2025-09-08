@@ -83,6 +83,55 @@ func TestPagerIntegration(t *testing.T) {
 		}
 	})
 
+    t.Run("cursor pagination ASC direction", func(t *testing.T) {
+        var results []TestModel
+        
+        // Test ASC ordering with cursor pagination
+        in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "created_at", Asc: true}}}
+        q := db.NewSelect().Model(&TestModel{})
+        out, err := pager.ApplyAndScan(ctx, q, in, &results)
+        if err != nil {
+            t.Fatal(err)
+        }
+
+        // Should get oldest items first
+        if len(results) < 2 {
+            t.Fatalf("expected at least 2 results, got %d", len(results))
+        }
+
+        // Verify ASC order
+        if results[0].CreatedAt > results[1].CreatedAt {
+            t.Error("expected ASC order: first item should have smaller CreatedAt")
+        }
+
+        cursor, ok := out.Selector.(*pagerpb.Page_Cursor)
+        if !ok || cursor.Cursor == "" {
+            t.Fatal("expected cursor to be set")
+        }
+
+        // Get next page with cursor
+        var nextResults []TestModel
+        in2 := &pagerpb.Page{
+            Limit: 2, 
+            Order: in.Order,
+            Selector: &pagerpb.Page_Cursor{Cursor: cursor.Cursor},
+        }
+        q2 := db.NewSelect().Model(&TestModel{})
+        _, err = pager.ApplyAndScan(ctx, q2, in2, &nextResults)
+        if err != nil {
+            t.Fatal(err)
+        }
+
+        if len(nextResults) == 0 {
+            t.Error("expected next results")
+        }
+
+        // Check that cursor pagination continues in ASC order (newer items)
+        if len(nextResults) > 0 && nextResults[0].CreatedAt <= results[len(results)-1].CreatedAt {
+            t.Error("cursor pagination should return newer items in ASC mode")
+        }
+    })
+
     t.Run("empty result", func(t *testing.T) {
         var results []TestModel
         in := &pagerpb.Page{
@@ -101,8 +150,8 @@ func TestPagerIntegration(t *testing.T) {
 
     })
 
-	t.Run("mixed order", func(t *testing.T) {
-		var results []TestModel
+    t.Run("mixed order", func(t *testing.T) {
+        var results []TestModel
         in := &pagerpb.Page{Limit: 3, Order: []*pagerpb.Order{{Key: "score", Asc: false}, {Key: "name", Asc: true}}}
         q := db.NewSelect().Model(&TestModel{})
         _, err := pager.ApplyAndScan(ctx, q, in, &results)
@@ -112,17 +161,83 @@ func TestPagerIntegration(t *testing.T) {
 
 		if len(results) != 3 {
 			t.Errorf("expected 3 items, got %d", len(results))
-		}
+        }
 
-		// Verify order
-		for i := 1; i < len(results); i++ {
-			if results[i].Score > results[i-1].Score {
-				t.Error("scores should be descending")
-			}
-			if results[i].Score == results[i-1].Score && results[i].Name < results[i-1].Name {
-				t.Error("names should be ascending when scores are equal")
-			}
-		}
+        // Verify order
+        for i := 1; i < len(results); i++ {
+            if results[i].Score > results[i-1].Score {
+                t.Error("scores should be descending")
+            }
+            if results[i].Score == results[i-1].Score && results[i].Name < results[i-1].Name {
+                t.Error("names should be ascending when scores are equal")
+            }
+        }
+    })
+
+    t.Run("mixed order variant: score ASC, name DESC", func(t *testing.T) {
+        var results []TestModel
+        in := &pagerpb.Page{Limit: 5, Order: []*pagerpb.Order{{Key: "score", Asc: true}, {Key: "name", Asc: false}}}
+        q := db.NewSelect().Model(&TestModel{})
+        _, err := pager.ApplyAndScan(ctx, q, in, &results)
+        if err != nil { t.Fatal(err) }
+        if len(results) != 5 { t.Fatalf("expected 5 items, got %d", len(results)) }
+        for i := 1; i < len(results); i++ {
+            if results[i].Score < results[i-1].Score {
+                // ASC: next score should be >= prev
+                t.Error("scores should be ascending")
+            }
+            if results[i].Score == results[i-1].Score && results[i].Name > results[i-1].Name {
+                // DESC for name when scores equal
+                t.Error("names should be descending when scores are equal")
+            }
+        }
+    })
+
+    t.Run("mixed order cursor pagination", func(t *testing.T) {
+        // Test cursor pagination with mixed direction (score DESC, name ASC)
+        var results []TestModel
+        in := &pagerpb.Page{Limit: 2, Order: []*pagerpb.Order{{Key: "score", Asc: false}, {Key: "name", Asc: true}}}
+        q := db.NewSelect().Model(&TestModel{})
+        out, err := pager.ApplyAndScan(ctx, q, in, &results)
+        if err != nil {
+            t.Fatal(err)
+        }
+
+        if len(results) < 2 {
+            t.Fatalf("expected at least 2 results, got %d", len(results))
+        }
+
+        cursor, ok := out.Selector.(*pagerpb.Page_Cursor)
+        if !ok || cursor.Cursor == "" {
+            t.Fatal("expected cursor to be set")
+        }
+
+        // Get next page with cursor
+        var nextResults []TestModel
+        in2 := &pagerpb.Page{
+            Limit: 2,
+            Order: in.Order,
+            Selector: &pagerpb.Page_Cursor{Cursor: cursor.Cursor},
+        }
+        q2 := db.NewSelect().Model(&TestModel{})
+        _, err = pager.ApplyAndScan(ctx, q2, in2, &nextResults)
+        if err != nil {
+            t.Fatal(err)
+        }
+
+        // Verify that cursor pagination respects the mixed ordering
+        if len(nextResults) > 0 {
+            lastFromFirst := results[len(results)-1]
+            firstFromNext := nextResults[0]
+
+            // Either score is lower, or score is same but name is alphabetically later
+            if firstFromNext.Score > lastFromFirst.Score {
+                t.Error("next page should have lower or equal score")
+            }
+            if firstFromNext.Score == lastFromFirst.Score && firstFromNext.Name <= lastFromFirst.Name {
+                t.Error("when scores are equal, next page should have alphabetically later name")
+            }
+        }
     })
 
     t.Run("stale cursor should error", func(t *testing.T) {

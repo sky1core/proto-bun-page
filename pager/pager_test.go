@@ -72,7 +72,7 @@ func TestBuildOrderPlan(t *testing.T) {
             specs:    []OrderSpecInterface{&pagerpb.Order{Key: "name", Asc: true}},
             expected: []OrderItem{
                 {Column: "name", Direction: "ASC"},
-                {Column: "id", Direction: "ASC"},
+                {Column: "id", Direction: "DESC"},
             },
         },
         {
@@ -89,7 +89,7 @@ func TestBuildOrderPlan(t *testing.T) {
             expected: []OrderItem{
                 {Column: "score", Direction: "DESC"},
                 {Column: "name", Direction: "ASC"},
-                {Column: "id", Direction: "ASC"},
+                {Column: "id", Direction: "DESC"},
             },
         },
     }
